@@ -1,0 +1,5 @@
+# 亚马逊运营 Agent 工具箱：15 个实战工具 + 86 篇知识库检索 + 11 套方法论技能。
+# 移植自 amazon-ecom-agent（AGPL-3.0）；浏览器半边由 dsh.client 声明加载。
+- insert:
+    - id: ecom-agent
+      name: 'dsh-ecom-agent'

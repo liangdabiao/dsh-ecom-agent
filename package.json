@@ -1,0 +1,63 @@
+{
+  "name": "dsh-ecom-agent",
+  "version": "0.1.0",
+  "description": "亚马逊运营 Agent 工具箱：15 个实战工具（市场调研/广告报表确定性诊断/商品页采集/AI 生图/领星 ERP 只读）+ 86 篇运营知识库 + 11 套方法论技能。移植自 amazon-ecom-agent（AGPL-3.0）。",
+  "license": "AGPL-3.0",
+  "type": "module",
+  "main": "src/host.js",
+  "exports": {
+    ".": "./src/host.js",
+    "./client": "./dist/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./locale/*.json": "./locale/*.json",
+    "./package.json": "./package.json"
+  },
+  "icon": "./icon.svg",
+  "files": [
+    "src",
+    "dist",
+    "lib",
+    "knowledge",
+    "prompts",
+    "locale/*.json",
+    "cordis.patch.yml",
+    "icon.svg",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "amazon",
+    "ecommerce",
+    "agent"
+  ],
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0",
+    "dsh": ">=0.2.1-rc.2 <0.3.0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": []
+    }
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "^3.18.0",
+    "exceljs": "^4.4.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.10"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "watch": "node scripts/build.mjs --watch",
+    "test": "node test/lib.test.mjs",
+    "selftest": "node scripts/selftest.mjs",
+    "prepack": "npm run build"
+  }
+}
