@@ -198,7 +198,7 @@ export const scrapeProductTool = {
 
 // ── 生图（3 个，需生图中转 key）──────────────────────────────────────────
 export const generateImageTool = {
-  name: 'ecom_generate_image',
+  name: 'agent_generate_image',
   description: 'AI 生成电商图片（主图/A+图/场景图）。有参考图时严格保持产品一致。需配置生图中转 key。',
   parameters: {
     type: 'object', additionalProperties: false, required: ['prompt'],
@@ -270,7 +270,7 @@ export const listImagesTool = {
   async execute(args) {
     check(args, this.parameters)
     const files = imagegen.listGeneratedImages(configRef.rt)
-    if (files.length === 0) return result(true, '还没有生成过图片。这不是错误：用 ecom_generate_image 或整套图工具生成后这里就有了。')
+    if (files.length === 0) return result(true, '还没有生成过图片。这不是错误：用 agent_generate_image 或整套图工具生成后这里就有了。')
     return result(true, `共 ${files.length} 张（最近 30 张内）：`, files.map((f) => f.file).join('\n'))
   },
 }

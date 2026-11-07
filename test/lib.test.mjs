@@ -200,7 +200,7 @@ test('15 个工具：命名/枚举/required 对齐', () => {
   const names = TOOLS.map((t) => t.name)
   assert.deepEqual(names, [
     'ecom_research_keyword', 'ecom_research_asin', 'ecom_keyword_competition', 'ecom_competitor_reverse',
-    'ecom_traffic_diagnosis', 'ecom_scrape_product', 'ecom_generate_image', 'ecom_generate_image_set',
+    'ecom_traffic_diagnosis', 'ecom_scrape_product', 'agent_generate_image', 'ecom_generate_image_set',
     'ecom_translate_image', 'ecom_list_images', 'ecom_list_reports', 'ecom_analyze_ads_report',
     'ecom_lingxing_sellers', 'ecom_lingxing_query', 'ecom_knowledge_search',
   ])

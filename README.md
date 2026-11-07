@@ -14,7 +14,7 @@ DeepSeek Harness（dsh）插件：**15 个实战运营工具**（市场调研/�
 | `ecom_competitor_reverse` | 竞品流量词反查 | 仅 Sorftime |
 | `ecom_traffic_diagnosis` | 流量异动诊断 | 仅 Sorftime |
 | `ecom_scrape_product` | 采集商品页 + 主图下载（三级反爬链：curl 直连→浏览器渲染→数据源兜底） | **零 key** |
-| `ecom_generate_image` | AI 生图（参考图保真前言 + input_fidelity 降级重试 + 画布裁剪安全区提示） | 生图中转 key |
+| `agent_generate_image` | AI 生图（参考图保真前言 + input_fidelity 降级重试 + 画布裁剪安全区提示） | 生图中转 key |
 | `ecom_generate_image_set` | 整套图顺序生成（7 图叙事 / A+，单张失败不中断） | 同上 |
 | `ecom_translate_image` | 图片翻译（换文字不换版式，一套图铺多站点） | 同上 |
 | `ecom_list_images` | 列出已生成的图片 | **零 key** |
