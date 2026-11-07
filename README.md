@@ -62,6 +62,13 @@ npm install && npm test && npm run selftest && npm run build
 - `npm run selftest`：写真实 xlsx → 确定性聚合校验 + 知识检索 + 11 技能注册，零网络零 key
 - `npm run build`：打包 dist/client.js 并做产物三自检
 
+
+## 安装
+
+```bash
+dsh plugin --profile web add dsh-ecom-agent
+```
+
 ## 许可
 
 **AGPL-3.0**——上游 [amazon-ecom-agent](https://github.com/liangdabiao/amazon-ecom-agent)（衍生自 IvyeaOps）为 AGPL-3.0，本插件作为衍生作品同样按 AGPL-3.0 传播，保留上游 LICENSE。知识库文档平移自 ivyea-agent（MIT），方法论文本来自 IvyeaOps（AGPL-3.0）。
