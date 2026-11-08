@@ -7,6 +7,7 @@
 import Schema from '@deepseek-ai/schemastery'
 import { join } from 'node:path'
 import { runtimeConfig } from './paths.js'
+import { resolveConfig, maskSettings, saveSettings, clearSettings, getSettings } from '../lib/settings.js'
 import { systemSection } from './systemPrompt.js'
 import { registerApi } from '../lib/api.js'
 import { createSkillProvider } from '../lib/skills.js'
@@ -33,7 +34,10 @@ export const Config = Schema.object({
   injectRules: Schema.boolean().default(true).description('注入亚马逊运营硬规则到系统提示'),
 })
 
-const configRef = { config: Config, rt: runtimeConfig(Config) }
+const configRef = { base: Config, rt: runtimeConfig(Config) }
+// 每次 execute 实时合并：面板 settings.json 非空字段覆盖 Config（保存后立即生效，无需重启）
+const liveCfg = () => resolveConfig(configRef.base)
+const liveRt = () => runtimeConfig(liveCfg())
 
 // 手写参数校验（原生注册工具 dsh 不代验）
 function check(args, spec) {
@@ -100,7 +104,7 @@ export const researchKeywordTool = {
   output: OUTPUT,
   async execute(args) {
     check(args, this.parameters)
-    const out = await market.researchKeyword(configRef.rt, args.keyword, args.marketplace || configRef.config.defaultMarket)
+    const out = await market.researchKeyword(liveRt(), args.keyword, args.marketplace || liveCfg().defaultMarket)
     return result(true, `关键词调研完成（来源 ${out.source}）。数据已按预算压缩，直接按系统提示词方法论分析。`, out.body)
   },
 }
@@ -116,7 +120,7 @@ export const researchAsinTool = {
   output: OUTPUT,
   async execute(args) {
     check(args, this.parameters)
-    const out = await market.researchAsin(configRef.rt, args.asin, args.marketplace || configRef.config.defaultMarket)
+    const out = await market.researchAsin(liveRt(), args.asin, args.marketplace || liveCfg().defaultMarket)
     return result(true, `ASIN 调研完成（来源 ${out.source}）。`, out.body)
   },
 }
@@ -132,7 +136,7 @@ export const keywordCompetitionTool = {
   output: OUTPUT,
   async execute(args) {
     check(args, this.parameters)
-    const out = await market.keywordCompetition(configRef.rt, args.keyword, args.marketplace || configRef.config.defaultMarket)
+    const out = await market.keywordCompetition(liveRt(), args.keyword, args.marketplace || liveCfg().defaultMarket)
     return result(true, '关键词竞争数据完成。', out.body)
   },
 }
@@ -148,7 +152,7 @@ export const competitorReverseTool = {
   output: OUTPUT,
   async execute(args) {
     check(args, this.parameters)
-    const out = await market.competitorReverse(configRef.rt, args.asin, args.marketplace || configRef.config.defaultMarket)
+    const out = await market.competitorReverse(liveRt(), args.asin, args.marketplace || liveCfg().defaultMarket)
     return result(true, '竞品反查数据完成。', out.body)
   },
 }
@@ -164,7 +168,7 @@ export const trafficDiagnosisTool = {
   output: OUTPUT,
   async execute(args) {
     check(args, this.parameters)
-    const out = await market.trafficDiagnosis(configRef.rt, args.asin, args.marketplace || configRef.config.defaultMarket)
+    const out = await market.trafficDiagnosis(liveRt(), args.asin, args.marketplace || liveCfg().defaultMarket)
     return result(true, '流量诊断数据完成。', out.body)
   },
 }
@@ -181,8 +185,8 @@ export const scrapeProductTool = {
   output: OUTPUT,
   async execute(args) {
     check(args, this.parameters)
-    const rt = configRef.rt
-    const mkt = args.marketplace || configRef.config.defaultMarket
+    const rt = liveRt()
+    const mkt = args.marketplace || liveCfg().defaultMarket
     const data = await scrapeProduct(rt, args.asin, mkt)
     if (!data) {
       return result(false, `采集失败：${args.asin} 三级采集链（直连/浏览器渲染/数据源兜底）都没拿到页面。` +
@@ -213,7 +217,7 @@ export const generateImageTool = {
   output: OUTPUT,
   async execute(args) {
     check(args, this.parameters)
-    const out = await imagegen.generateImage(configRef.rt, args.prompt, args.size || '1024x1024', args.reference_image || '', args.presence || 'supporting')
+    const out = await imagegen.generateImage(liveRt(), args.prompt, args.size || '1024x1024', args.reference_image || '', args.presence || 'supporting')
     return result(true, `图片已生成：${out.file}（${out.size}）。用户可在侧栏面板「图库」回看。`)
   },
 }
@@ -235,7 +239,7 @@ export const generateImageSetTool = {
     let shots
     try { shots = JSON.parse(args.shots_json) } catch (e) { return result(false, `shots_json 不是合法 JSON: ${e.message}`) }
     if (!Array.isArray(shots) || shots.length === 0) return result(false, 'shots_json 必须是非空数组')
-    const results = await imagegen.generateImageSet(configRef.rt, shots, args.default_reference || '')
+    const results = await imagegen.generateImageSet(liveRt(), shots, args.default_reference || '')
     const ok = results.filter((r) => r.ok).length
     return result(true, `${ok}/${results.length} 张成功${ok < results.length ? '（失败项见明细，可单独重生成）' : ''}。用户可在侧栏「图库」回看。`,
       JSON.stringify(results.map(({ name, ok: o, file, error }) => ({ name, ok: o, file, error })), null, 1))
@@ -256,7 +260,7 @@ export const translateImageTool = {
   output: OUTPUT,
   async execute(args) {
     check(args, this.parameters)
-    const out = await imagegen.translateImage(configRef.rt, args.image_path, args.target_language)
+    const out = await imagegen.translateImage(liveRt(), args.image_path, args.target_language)
     return result(true, `翻译完成：${out.file}。`)
   },
 }
@@ -269,7 +273,7 @@ export const listImagesTool = {
   output: OUTPUT,
   async execute(args) {
     check(args, this.parameters)
-    const files = imagegen.listGeneratedImages(configRef.rt)
+    const files = imagegen.listGeneratedImages(liveRt())
     if (files.length === 0) return result(true, '还没有生成过图片。这不是错误：用 agent_generate_image 或整套图工具生成后这里就有了。')
     return result(true, `共 ${files.length} 张（最近 30 张内）：`, files.map((f) => f.file).join('\n'))
   },
@@ -284,7 +288,7 @@ export const listReportsTool = {
   output: OUTPUT,
   async execute(args) {
     check(args, this.parameters)
-    const rt = configRef.rt
+    const rt = liveRt()
     const files = listReports(rt)
     if (files.length === 0) {
       return result(true, `reports 目录（${rt.reportsDir}）为空。请用户把亚马逊广告搜索词报表（xlsx/csv）放到该目录后重试。这不是错误。`)
@@ -316,7 +320,7 @@ export const analyzeAdsTool = {
   output: OUTPUT,
   async execute(args) {
     check(args, this.parameters)
-    const rt = configRef.rt
+    const rt = liveRt()
     const path = resolveReport(rt, args.file_name)
     if (!path) return result(false, `找不到报表 ${args.file_name}。请先用 ecom_list_reports 查看可用文件。`)
     const resultData = await analyzeAdsReport(path, args.file_name)
@@ -338,7 +342,7 @@ export const lingxingSellersTool = {
   output: OUTPUT,
   async execute(args) {
     check(args, this.parameters)
-    const rt = configRef.rt
+    const rt = liveRt()
     if (!lingxing.isConfigured(rt)) return result(false, LX_NOT_CONFIGURED)
     try {
       const data = await lingxing.callRead(rt, '/erp/sc/data/seller/lists', {})
@@ -363,7 +367,7 @@ export const lingxingQueryTool = {
   output: OUTPUT,
   async execute(args) {
     check(args, this.parameters)
-    const rt = configRef.rt
+    const rt = liveRt()
     if (!lingxing.isConfigured(rt)) return result(false, LX_NOT_CONFIGURED)
     let params = {}
     if (args.params_json) {
@@ -392,7 +396,7 @@ export const knowledgeSearchTool = {
   output: OUTPUT,
   async execute(args) {
     check(args, this.parameters)
-    const out = knowledgeSearch(configRef.rt.knowledgeDir, args.query)
+    const out = knowledgeSearch(liveRt().knowledgeDir, args.query)
     if (out.empty) return result(true, `知识库里没有找到与「${args.query}」相关的内容。这不是错误：换关键词（如英文术语）再试，或按已有知识回答并注明未检索到。`)
     if (out.tooShort) return result(true, '查询词太短，请给出更具体的关键词。')
     return result(true, `检索到 ${out.results.length} 个相关片段（按相关度排序）：`,
@@ -411,7 +415,7 @@ const TOOLS = [
 
 export function apply(ctx, config) {
   const rt = runtimeConfig(config)
-  configRef.config = config
+  configRef.base = config
   configRef.rt = rt
 
   ctx.effect(() => ctx.skills.registerProvider(() => createSkillProvider([join(rt.knowledgeDir, 'skills')])), `${name}: skills`)

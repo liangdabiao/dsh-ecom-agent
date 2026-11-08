@@ -116,6 +116,70 @@ function AdsTab() {
 }
 
 // ---------- 主面板 ----------
+
+// ---------- 服务配置：面板内直配各数据源密钥（存本机 $DSH_HOME，永不上传/回显明文） ----------
+const SETTING_FIELDS = [
+  { key: 'sorftimeKey', label: 'Sorftime key', secret: true },
+  { key: 'sellerspriteKey', label: '卖家精灵 key', secret: true },
+  { key: 'imageBaseUrl', label: '生图中转地址', secret: false },
+  { key: 'imageApiKey', label: '生图中转 key', secret: true },
+  { key: 'lingxingHost', label: '领星 ERP 地址', secret: false },
+  { key: 'lingxingAppId', label: '领星 AppId', secret: false },
+  { key: 'lingxingAppSecret', label: '领星 AppSecret', secret: true },
+]
+
+function SettingsTab() {
+  const [info, setInfo] = useState(null)
+  const [values, setValues] = useState({})
+  const [msg, setMsg] = useState('')
+  const [error, setError] = useState('')
+  useEffect(() => {
+    fetchJson('/api/config').then(setInfo).catch((e) => setError(e.message))
+  }, [])
+  const save = async () => {
+    setError(''); setMsg('')
+    try {
+      const d = await fetch(BASE + '/api/config', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(values) }).then(r => r.json())
+      if (d.error) throw new Error(d.error)
+      setInfo(d.credentials); setValues({})
+      setMsg('已保存（存本机 $DSH_HOME/ecom-agent/settings.json，不会上传）。立即生效。')
+    } catch (e) { setError(e.message) }
+  }
+  const clear = async () => {
+    setError(''); setMsg('')
+    try {
+      const d = await fetch(BASE + '/api/config', { method: 'DELETE' }).then(r => r.json())
+      if (d.error) throw new Error(d.error)
+      setInfo(d.credentials); setValues({}); setMsg('已清除本机保存的全部密钥。')
+    } catch (e) { setError(e.message) }
+  }
+  return h('div', null,
+    h('div', { style: styles.card },
+      h('div', { style: styles.sectionTitle }, '⚙️ 服务配置（市场调研 / AI 生图 / 领星 ERP）'),
+      info === null ? h('div', { style: styles.muted }, '加载中…')
+        : h('div', { style: styles.muted },
+            info.anyConfigured ? '已保存以下配置（留空的项沿用已存值）：' : '尚未配置。填好对应项并保存即可启用对应工具。'),
+      SETTING_FIELDS.map(({ key, label }) => h('div', { key: key, style: styles.field },
+        h('div', { style: styles.mutedSmall },
+          label,
+          info && info.configured && info.configured[key] ? h('span', { style: styles.ok }, ' · 已配置 ' + (info[key] || '✓')) : null),
+        h('input', {
+          type: 'password',
+          placeholder: info && info.configured && info.configured[key] ? '已保存（输入新值可覆盖）' : label,
+          value: values[key] || '',
+          onChange: (e) => setValues((v) => ({ ...v, [key]: e.target.value })),
+          style: styles.input,
+        }))),
+      h('div', { style: styles.row },
+        h('button', { style: styles.button, onClick: save }, '保存配置'),
+        info?.anyConfigured ? h('button', { style: styles.tab, onClick: clear }, '清除全部') : null),
+      msg ? h('div', { style: styles.ok }, msg) : null,
+      error ? h('div', { style: styles.error }, error) : null,
+      h('div', { style: { ...styles.muted, fontSize: 12, lineHeight: 1.8 } },
+        'Sorftime / 卖家精灵：对应官网控制台获取 API key；生图中转：需 gpt-image 权限的中转地址+key；领星 ERP：管理后台的应用凭证。',
+        h('br'), '全部只存本机（$DSH_HOME/ecom-agent/settings.json），任何接口不回显明文。')))
+}
+
 function Panel() {
   const [tab, setTab] = useState('knowledge')
   const [health, setHealth] = useState(null)
@@ -126,12 +190,16 @@ function Panel() {
       h('button', { style: tab === 'knowledge' ? styles.tabActive : styles.tab, onClick: () => setTab('knowledge') }, '📚 知识库'),
       h('button', { style: tab === 'ads' ? styles.tabActive : styles.tab, onClick: () => setTab('ads') }, '📊 报表诊断'),
       h('button', { style: tab === 'images' ? styles.tabActive : styles.tab, onClick: () => setTab('images') }, '🖼 图库'),
+      h('button', { style: tab === 'settings' ? styles.tabActive : styles.tab, onClick: () => setTab('settings') }, '⚙️ 服务配置'),
       h('span', { style: { ...styles.muted, marginLeft: 'auto' } },
         `数据源：调研 ${src.sorftime ? 'Sorftime' : src.sellersprite ? '卖家精灵' : '未配'} · 生图 ${src.image ? '✓' : '未配'} · 领星 ${src.lingxing ? '✓' : '未配'}`)),
-    tab === 'knowledge' ? h(KnowledgeTab) : tab === 'ads' ? h(AdsTab) : h(ImagesTab))
+    tab === 'knowledge' ? h(KnowledgeTab) : tab === 'ads' ? h(AdsTab) : tab === 'settings' ? h(SettingsTab) : h(ImagesTab))
 }
 
 const styles = {
+  ok: { color: '#1a7f37' },
+  field: { marginBottom: 10 },
+  mutedSmall: { color: '#a0a0a8', fontSize: 12, marginBottom: 4 },
   wrap: { padding: 16, overflow: 'auto', height: '100%', boxSizing: 'border-box', fontFamily: '-apple-system, "Segoe UI", "Microsoft YaHei", sans-serif', fontSize: 13, color: '#1a1a1a' },
   row: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 },
   input: { padding: '6px 10px', border: '1px solid #d9d9de', borderRadius: 8, background: '#fff', color: '#1a1a1a', outline: 'none' },
