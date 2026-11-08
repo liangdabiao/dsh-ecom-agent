@@ -4,6 +4,10 @@ DeepSeek Harness（dsh）插件：**15 个实战运营工具**（市场调研/�
 
 > 原版是一个独立的 Agent 应用（OpenAI Agents SDK）；本插件只移植其核心资产（工具/知识库/系统提示词硬规则），思考循环由 dsh 本身的 Agent 循环承担——这正是 dsh「无特权内核」设计的意义。
 
+
+<img width="2295" height="1170" alt="image" src="https://github.com/user-attachments/assets/eb8f5a3b-393b-4281-aa44-c8f91e7191e7" />
+
+
 ## 15 个工具一览
 
 | 工具 | 功能 | 外部依赖 |
