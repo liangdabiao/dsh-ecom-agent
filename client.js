@@ -180,23 +180,111 @@ function SettingsTab() {
         h('br'), '全部只存本机（$DSH_HOME/ecom-agent/settings.json），任何接口不回显明文。')))
 }
 
+
+// ---------- 功能导览 + 跨工具工作流（点击「使用工作流」开新对话预填草稿） ----------
+const TOOL_GUIDE = [
+  { group: '市场调研', need: 'Sorftime 或卖家精灵', items: [
+    ['ecom_research_keyword', '关键词调研', '搜索量、竞争度、CPC——选品和 Listing 的起点'],
+    ['ecom_research_asin', ' ASIN 深挖', '竞品 ASIN 的流量词与销量结构'],
+    ['ecom_keyword_competition', '关键词竞争分析', '竞品在某个词上的投放强度'],
+    ['ecom_competitor_reverse', '竞品流量词反查', '对手的流量来源词全量拉出'],
+    ['ecom_traffic_diagnosis', '流量异动诊断', '自家 ASIN 流量突然涨/跌，找原因'],
+  ]},
+  { group: 'AI 生图（需生图中转）', need: '生图中转地址 + key', items: [
+    ['agent_generate_image', '单张生图', '主图/场景图/A+ 素材，支持参考图保真'],
+    ['ecom_generate_image_set', '整套图顺序生成', '7 图叙事 / A+ 页面，单张失败不中断'],
+    ['ecom_translate_image', '图片翻译', '换文字不换版式，一套图铺多站点'],
+    ['ecom_list_images', '图库', '看已生成的图'],
+  ]},
+  { group: '运营数据（需领星）', need: '领星 ERP 三件套', items: [
+    ['ecom_lingxing_sellers', '在售商品', '领星里的店铺商品列表'],
+    ['ecom_lingxing_query', '领星报表查询', '销量/广告/利润等报表数据'],
+    ['ecom_analyze_ads_report', '广告报表诊断', '拖入广告报表，ACOS/曝光/转化自动分析'],
+    ['ecom_list_reports', '历史报表', '看做过的诊断'],
+  ]},
+  { group: '免费工具（无需 key）', need: '零配置', items: [
+    ['ecom_scrape_product', '采集商品页', '抓竞品详情页 + 主图（三级反爬链）'],
+    ['ecom_knowledge_search', '运营知识库', '11 个 Amazon 运营方法技能全文检索'],
+  ]},
+]
+
+const WORKFLOWS = [
+  { id: 'new-product-research', title: '新品调研 → 选词',
+    summary: '采集竞品详情页 → 拉竞品流量词 → 筛出自己该打的关键词，输出选词表。',
+    steps: ['ecom_scrape_product', 'ecom_competitor_reverse'],
+    prompt: '帮我做一次新品调研：\n1. 采集这个竞品商品页（标题/五点/主图风格）：贴竞品链接 →\n2. 用 ecom_competitor_reverse 反查它的流量词\n3. 按搜索量与竞争度给我一份「该打的关键词」清单（分核心词/长尾词）' },
+  { id: 'listing-photos', title: 'Listing 图一套出齐',
+    summary: '主图 + 场景图 + A+ 素材按 7 图叙事一次生成，参考图保证产品不变形。',
+    steps: ['agent_generate_image', 'ecom_generate_image_set'],
+    prompt: '给我的产品做一套 Listing 图（7 图叙事：主图→功能→场景→对比→尺寸→包装→A+）。产品参考图：贴图或路径 →。产品卖点：' },
+  { id: 'ads-weekly', title: '广告周报诊断',
+    summary: '拖入本周广告报表 → 自动 ACOS/转化诊断 → 结合领星销量给调价建议。',
+    steps: ['ecom_analyze_ads_report', 'ecom_lingxing_query'],
+    prompt: '做一次广告周报诊断：\n1. 分析这份广告报表：贴报表路径 →\n2. 结合领星最近 7 天销量（需已配置领星）\n3. 输出：该否定词 / 该调价的广告组 / 预算再分配建议' },
+  { id: 'multi-market', title: '一套图铺多站点',
+    summary: '生成中文版主图 → 图片翻译成英/日/德版式，多站点上架不重做图。',
+    steps: ['agent_generate_image', 'ecom_translate_image'],
+    prompt: '先生成一张主图（产品参考图：→），然后用 ecom_translate_image 出英文、日文、德文三个版本，版式不动只换文字。' },
+  { id: 'keyword-watch', title: '关键词周监控',
+    summary: '每周对核心词跑竞争分析，跟踪自家与竞品的投放变化。',
+    steps: ['ecom_keyword_competition', 'ecom_traffic_diagnosis'],
+    prompt: '对我这 5 个核心词各跑一次关键词竞争分析（词：→），再对自家 ASIN（→）做流量诊断，对比上周：哪些词我们掉位了、哪些竞品在加投。' },
+  { id: 'knowledge-coach', title: '运营知识速查',
+    summary: '不确定打法先查知识库（广告架构/新品推广/否定词策略…），再让模型按方法论执行。',
+    steps: ['ecom_knowledge_search'],
+    prompt: '先查运营知识库里「广告活动架构」的方法论，再按它检查我现有的广告结构（贴报表或描述现状 →）。' },
+]
+
+function GuideTab({ start }) {
+  const health = useState(null)
+  return h('div', null,
+    // 工作流
+    h('div', { style: styles.card },
+      h('div', { style: styles.sectionTitle }, '🔁 常用工作流（点击开新对话，草稿已填好，补内容即发）'),
+      h('div', { style: styles.wfGrid },
+        WORKFLOWS.map((wf) => h('div', { key: wf.id, style: styles.wfCard },
+          h('div', { style: styles.wfTitle }, wf.title),
+          h('div', { style: styles.mutedSmall }, wf.summary),
+          h('div', { style: { marginTop: 8 } },
+            h('button', { style: styles.button, onClick: () => start(wf.prompt) }, '▶ 使用工作流')))))),
+    // 工具总览
+    TOOL_GUIDE.map((g) => h('div', { key: g.group, style: styles.card },
+      h('div', { style: styles.sectionTitle }, g.group),
+      h('div', { style: styles.mutedSmall }, '需要：' + g.need),
+      h('table', { style: styles.table },
+        h('tbody', null,
+          g.items.map(([tool, name, desc]) => h('tr', { key: tool },
+            h('td', { style: styles.td }, h('code', { style: styles.code }, tool)),
+            h('td', { style: styles.td }, name),
+            h('td', { style: { ...styles.td, color: '#8a8a92' } }, desc))))))))
+}
+
+// start 由 apply 注入（slots.register 不透传 props，用模块级变量桥接）
+const PanelStart = { start: null }
+
 function Panel() {
-  const [tab, setTab] = useState('knowledge')
+  const start = PanelStart.start
+  const [tab, setTab] = useState('guide')
   const [health, setHealth] = useState(null)
   useEffect(() => { fetchJson('/api/health').then(setHealth).catch(() => setHealth({ sources: {} })) }, [])
   const src = health?.sources || {}
   return h('div', { style: styles.wrap },
     h('div', { style: styles.row },
+      h('button', { style: tab === 'guide' ? styles.tabActive : styles.tab, onClick: () => setTab('guide') }, '🚀 开始'),
       h('button', { style: tab === 'knowledge' ? styles.tabActive : styles.tab, onClick: () => setTab('knowledge') }, '📚 知识库'),
       h('button', { style: tab === 'ads' ? styles.tabActive : styles.tab, onClick: () => setTab('ads') }, '📊 报表诊断'),
       h('button', { style: tab === 'images' ? styles.tabActive : styles.tab, onClick: () => setTab('images') }, '🖼 图库'),
       h('button', { style: tab === 'settings' ? styles.tabActive : styles.tab, onClick: () => setTab('settings') }, '⚙️ 服务配置'),
       h('span', { style: { ...styles.muted, marginLeft: 'auto' } },
         `数据源：调研 ${src.sorftime ? 'Sorftime' : src.sellersprite ? '卖家精灵' : '未配'} · 生图 ${src.image ? '✓' : '未配'} · 领星 ${src.lingxing ? '✓' : '未配'}`)),
-    tab === 'knowledge' ? h(KnowledgeTab) : tab === 'ads' ? h(AdsTab) : tab === 'settings' ? h(SettingsTab) : h(ImagesTab))
+    tab === 'guide' ? h(GuideTab, { start }) : tab === 'knowledge' ? h(KnowledgeTab) : tab === 'ads' ? h(AdsTab) : tab === 'settings' ? h(SettingsTab) : h(ImagesTab))
 }
 
 const styles = {
+  wfGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 10 },
+  wfCard: { background: '#fffdf7', border: '1px solid #f0e0c8', borderRadius: 10, padding: 12 },
+  wfTitle: { fontWeight: 700, color: '#8a5a00', marginBottom: 4 },
+  code: { fontFamily: 'Consolas, monospace', fontSize: 11, background: '#f5f5f7', borderRadius: 4, padding: '1px 5px' },
   ok: { color: '#1a7f37' },
   field: { marginBottom: 10 },
   mutedSmall: { color: '#a0a0a8', fontSize: 12, marginBottom: 4 },
@@ -223,12 +311,22 @@ const styles = {
 }
 
 function apply(ctx) {
+  // 工作流入口：开一个新对话并把草稿填进输入框（不直接发送，用户补完再发）
+  const start = (prompt) => {
+    try {
+      ctx.uiWorkspace.startSession(undefined, { prompt, whenDraftExists: 'replace' })
+    } catch (err) {
+      console.error('[ecom-agent] 开新对话失败', err)
+      alert('开新对话失败：' + (err && err.message || err))
+    }
+  }
   ctx.slots.inject('sidebar.panellist', () =>
     ctx.slots.register({ name: 'sidebar.panellist', id: PANEL_ID, order: 10, label: () => '运营 Agent' }, PanelIcon))
   ctx.slots.inject('main', () =>
     ctx.slots.register({ name: 'main', key: PANEL_ID }, Panel))
+  PanelStart.start = start
 }
 
 exports.isPlugin = true
-exports.inject = ['slots']
+exports.inject = ['slots', 'uiWorkspace']
 exports.apply = apply
